@@ -233,5 +233,27 @@ with tab2:
             with st.chat_message(msg["role"]):
                 st.write(msg["content"])
                 
-    if user_input := st.chat_input("질문이나 피드백 요청을 입력하세요..."):
-        if not
+if user_input := st.chat_input("질문이나 피드백 요청을 입력하세요..."):
+        if not api_key:
+            st.error("⚠️ API Key가 필요합니다. Streamlit Secrets에 등록해 주세요.")
+        else:
+            st.session_state.messages.append({"role": "user", "content": user_input})
+            with st.chat_message("user"):
+                st.write(user_input)
+                
+            try:
+                client = OpenAI(
+                    api_key=api_key,
+                    base_url="https://api.tencentcloud.com/tokenhub/v1"
+                )
+                with st.chat_message("assistant"):
+                    with st.spinner("AI가 답변을 생성 중입니다..."):
+                        response = client.chat.completions.create(
+                            model="deepseek-v4-flash",
+                            messages=st.session_state.messages
+                        )
+                        reply = response.choices[0].message.content
+                        st.write(reply)
+                st.session_state.messages.append({"role": "assistant", "content": reply})
+            except Exception as e:
+                st.error(f"오류가 발생했습니다: {e}")
