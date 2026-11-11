@@ -218,7 +218,7 @@ with tab2:
     st.title("💬 DeepSeek AI 데이터 분석 도우미")
     st.caption("이 챗봇은 이전 대화 맥락을 기억하며 학습 및 분석 결과에 대한 피드백을 제공합니다.")
     
-    # Secrets에서 TokenHub 또는 DeepSeek API Key 자동 로드
+    # Secrets에서 TOKENHUB_API_KEY 또는 DEEPSEEK_API_KEY 자동 로드
     api_key = st.secrets.get("TOKENHUB_API_KEY", "") or st.secrets.get("DEEPSEEK_API_KEY", "")
     if not api_key:
         api_key = st.text_input("API Key를 입력하세요 (선택사항):", type="password", key="key_input")
@@ -237,13 +237,9 @@ with tab2:
                 st.write(user_input)
                 
             try:
-                # TokenHub 키(thsk-로 시작) 사용 여부에 따른 엔드포인트 및 모델 지정
-                if api_key.startswith("thsk-"):
-                    base_url = "https://api.tencentcloud.com/tokenhub/v1"
-                    model_name = "deepseek-v4-flash"
-                else:
-                    base_url = "https://api.deepseek.com"
-                    model_name = "deepseek-chat"
+                # API Key 접두사(thsk- / sk-)와 상관없이 텐센트 클라우드 TokenHub 엔드포인트 및 모델 지정
+                base_url = "https://api.tencentcloud.com/tokenhub/v1"
+                model_name = "deepseek-v4-flash"
 
                 client = OpenAI(api_key=api_key, base_url=base_url)
                 with st.chat_message("assistant"):
