@@ -212,15 +212,16 @@ with tab1:
         st.error(f"⚠️ 데이터 처리 중 오류 발생: {e}")
 
 # ==========================================
-# TAB 2: DeepSeek AI 챗봇 (기억 기능)
+# TAB 2: DeepSeek / TokenHub AI 챗봇 (기억 기능)
 # ==========================================
 with tab2:
     st.title("💬 DeepSeek AI 데이터 분석 도우미")
     st.caption("이 챗봇은 이전 대화 맥락을 기억하며 학습 및 분석 결과에 대한 피드백을 제공합니다.")
     
-    api_key = st.secrets.get("DEEPSEEK_API_KEY", "")
+    # Secrets에서 TokenHub 또는 DeepSeek API Key 자동 로드
+    api_key = st.secrets.get("TOKENHUB_API_KEY", "") or st.secrets.get("DEEPSEEK_API_KEY", "")
     if not api_key:
-        api_key = st.text_input("DeepSeek API Key를 입력하세요 (선택사항):", type="password", key="key_input")
+        api_key = st.text_input("API Key를 입력하세요 (선택사항):", type="password", key="key_input")
         
     for msg in st.session_state.messages:
         if msg["role"] != "system":
@@ -229,18 +230,26 @@ with tab2:
                 
     if user_input := st.chat_input("질문이나 피드백 요청을 입력하세요..."):
         if not api_key:
-            st.error("⚠️ DeepSeek API Key가 필요합니다. Secrets에 등록하거나 위 칸에 입력해 주세요.")
+            st.error("⚠️ API Key가 필요합니다. Streamlit Secrets에 등록해 주세요.")
         else:
             st.session_state.messages.append({"role": "user", "content": user_input})
             with st.chat_message("user"):
                 st.write(user_input)
                 
             try:
-                client = OpenAI(api_key=api_key, base_url="https://api.deepseek.com")
+                # TokenHub 키(thsk-로 시작) 사용 여부에 따른 엔드포인트 및 모델 지정
+                if api_key.startswith("thsk-"):
+                    base_url = "https://api.tencentcloud.com/tokenhub/v1"
+                    model_name = "deepseek-v4-flash"
+                else:
+                    base_url = "https://api.deepseek.com"
+                    model_name = "deepseek-chat"
+
+                client = OpenAI(api_key=api_key, base_url=base_url)
                 with st.chat_message("assistant"):
-                    with st.spinner("DeepSeek가 답변을 생성 중입니다..."):
+                    with st.spinner("AI가 답변을 생성 중입니다..."):
                         response = client.chat.completions.create(
-                            model="deepseek-chat",
+                            model=model_name,
                             messages=st.session_state.messages
                         )
                         reply = response.choices[0].message.content
