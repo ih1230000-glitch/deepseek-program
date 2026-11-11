@@ -212,14 +212,19 @@ with tab1:
         st.error(f"⚠️ 데이터 처리 중 오류 발생: {e}")
 
 # ==========================================
-# TAB 2: DeepSeek / TokenHub AI 챗봇 (기억 기능)
+# TAB 2: DeepSeek AI 챗봇 (TokenHub)
 # ==========================================
 with tab2:
     st.title("💬 DeepSeek AI 데이터 분석 도우미")
     st.caption("이 챗봇은 이전 대화 맥락을 기억하며 학습 및 분석 결과에 대한 피드백을 제공합니다.")
     
-    # Secrets에서 TOKENHUB_API_KEY 또는 DEEPSEEK_API_KEY 자동 로드
-    api_key = st.secrets.get("TOKENHUB_API_KEY", "") or st.secrets.get("DEEPSEEK_API_KEY", "")
+    # Secrets에서 비밀 키 자동 가져오기
+    api_key = (
+        st.secrets.get("API_KEY", "") or 
+        st.secrets.get("TOKENHUB_API_KEY", "") or 
+        st.secrets.get("DEEPSEEK_API_KEY", "")
+    )
+    
     if not api_key:
         api_key = st.text_input("API Key를 입력하세요 (선택사항):", type="password", key="key_input")
         
@@ -229,27 +234,4 @@ with tab2:
                 st.write(msg["content"])
                 
     if user_input := st.chat_input("질문이나 피드백 요청을 입력하세요..."):
-        if not api_key:
-            st.error("⚠️ API Key가 필요합니다. Streamlit Secrets에 등록해 주세요.")
-        else:
-            st.session_state.messages.append({"role": "user", "content": user_input})
-            with st.chat_message("user"):
-                st.write(user_input)
-                
-            try:
-                # API Key 접두사(thsk- / sk-)와 상관없이 텐센트 클라우드 TokenHub 엔드포인트 및 모델 지정
-                base_url = "https://api.tencentcloud.com/tokenhub/v1"
-                model_name = "deepseek-v4-flash"
-
-                client = OpenAI(api_key=api_key, base_url=base_url)
-                with st.chat_message("assistant"):
-                    with st.spinner("AI가 답변을 생성 중입니다..."):
-                        response = client.chat.completions.create(
-                            model=model_name,
-                            messages=st.session_state.messages
-                        )
-                        reply = response.choices[0].message.content
-                        st.write(reply)
-                st.session_state.messages.append({"role": "assistant", "content": reply})
-            except Exception as e:
-                st.error(f"오류가 발생했습니다: {e}")
+        if not
