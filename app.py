@@ -1,3 +1,5 @@
+import json
+import urllib.request
 import streamlit as st
 from openai import OpenAI
 
@@ -5,7 +7,6 @@ st.set_page_config(page_title="DeepSeek AI 챗봇", page_icon="💬", layout="ce
 st.title("💬 DeepSeek AI 챗봇")
 st.caption("이전 대화의 맥락과 지시사항을 기억하여 연속적인 대화를 수행합니다.")
 
-# Streamlit Secrets에서 API Key 자동 로드
 def get_api_key():
     try:
         return (
@@ -16,9 +17,36 @@ def get_api_key():
     except Exception:
         return ""
 
-default_key = get_api_key()
+# 기본값인 openrouter/free를 맨 앞에 두고, 현재 무료로 제공 중인 DeepSeek 모델을 함께 조회
+@st.cache_data(ttl=600, show_spinner=False)
+def fetch_active_free_models():
+    try:
+        req = urllib.request.Request(
+            "https://openrouter.ai/api/v1/models",
+            headers={"User-Agent": "Mozilla/5.0"}
+        )
+        with urllib.request.urlopen(req, timeout=5) as res:
+            models = json.loads(res.read().decode("utf-8")).get("data", [])
 
-with st.expander("⚙️ 모델 및 설정 (클릭해서 열기/닫기)", expanded=False):
+        free_deepseek = []
+        for m in models:
+            mid = m.get("id", "")
+            pricing = m.get("pricing", {})
+            is_free = mid.endswith(":free") or (
+                str(pricing.get("prompt", "1")) == "0"
+                and str(pricing.get("completion", "1")) == "0"
+            )
+            if "deepseek" in mid.lower() and is_free and mid != "openrouter/free":
+                free_deepseek.append(mid)
+
+        return ["openrouter/free"] + free_deepseek
+    except Exception:
+        return ["openrouter/free", "deepseek/deepseek-r1:free"]
+
+default_key = get_api_key()
+available_models = fetch_active_free_models()
+
+with st.expander("⚙️ 모델 및 설정 (클릭해서 열기/닫기)", expanded=True):
     api_key = st.text_input(
         "OpenRouter API Key",
         value=default_key,
@@ -27,14 +55,10 @@ with st.expander("⚙️ 모델 및 설정 (클릭해서 열기/닫기)", expand
     )
 
     model_name = st.selectbox(
-        "DeepSeek 무료 모델 선택",
-        [
-            "deepseek/deepseek-r1:free",
-            "deepseek/deepseek-chat-v3-0324:free",
-            "openrouter/free"
-        ],
+        "현재 사용 가능한 무료 모델 선택",
+        available_models,
         index=0,
-        help="무료 서버에 사용자가 몰려 일시적으로 응답이 지연되면 다른 모델로 바꿔보세요."
+        help="기본값으로 안정적인 openrouter/free가 선택되며, 목록에서 다른 무료 DeepSeek 모델로 변경할 수 있습니다."
     )
 
     if st.button("🗑️ 이전 대화 기억 지우기", use_container_width=True):
@@ -46,7 +70,7 @@ with st.expander("⚙️ 모델 및 설정 (클릭해서 열기/닫기)", expand
         ]
         st.rerun()
 
-# 이전 대화 기록(세션 상태) 초기화 — 모든 대화가 여기에 누적되어 기억됨
+# 이전 대화 기록(세션 상태) 초기화
 if "messages" not in st.session_state:
     st.session_state.messages = [
         {
@@ -91,4 +115,5 @@ if user_input := st.chat_input("메시지를 입력하세요... (이전 대화�
             st.session_state.messages.append({"role": "assistant", "content": reply})
 
         except Exception as e:
-            st.error(f"오류가 발생했습니다: {e}")
+            st.session_state.messages.pop()
+            st.error(f"오류가 발생했습니다: {e}\n\n💡 무료 서버에 트래픽이 몰린 경우 상단 드롭다운에서 다른 DeepSeek 모델이나 `openrouter/free`를 선택해 보세요.")
